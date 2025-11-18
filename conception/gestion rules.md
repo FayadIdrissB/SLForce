@@ -1,84 +1,227 @@
+Business Rules – Messaging & Coaching Application (English Version)
 
-# 📜 Business Rules for the Messaging Application
+This document contains the complete and updated business rules of the application, rewritten for clarity and adapted to the architecture using Tinode for messaging.
 
-## 📌 Visiting the Application
+## 1. Visitor Rules
 
-- 🌍 A visitor can access the homepage of the application.
-- 👀 A visitor can view the services offered by the application.
-- 📝 Registration
+1.1 Access
 
+A visitor can access the homepage of the application.
 
-## 📝 Registration
+A visitor can view the list of services offered.
 
-- 🆕 A visitor can register and become a user.
-- 🔄 The visitor must choose to register as a Coach or Athlete.
-- 🖊️ The visitor must fill out a form with personal information.
-- 🔑 Login
+A visitor cannot access premium or messaging features.
 
+1.2 Registration
 
-## 🔑 Login
+A visitor can create an account.
 
-- 🔓 A user can log in via a login form.
-- 📧 The user must provide their email and password to authenticate.
-- 🆘 If the user forgets their password, they can request a reset link via email.
-- 🚫 A user is allowed 8 failed login attempts before temporary access restriction.
-- 🛠️ User Profile Management
+During registration, the visitor must choose a role:
 
+Coach
 
-## 🛠️ User Profile Management
+Athlete
 
-- ✉️ A user can update their email.
-- 🔒 A user can update their password.
-- 🏷️ A user can update their first name.
-- 🏷️ A user can update their last name.
-- 🗑️ A user can request account deletion.
-- ⏸️ A user can deactivate their account.
-- 🔄 A user can reactivate their account within 30 days.
-- 🏋️ Athlete-Specific Rules
+The visitor must fill out a form with required personal information.
 
+After registration:
 
-## 🏋️ Athlete-Specific Rules
+A corresponding Tinode account must also be created.
 
-- ⚖️ An athlete must provide their weight category.
-- 📅 An athlete must provide the date of their next competition.
-- 🔄 An athlete can update their weight category.
-- 🔄 An athlete can update their competition date.
-- 💳 An athlete must have an active PayPal subscription to access premium features.
-- 🏆 Coach-Specific Rules
+The Tinode User ID must be linked to the application's user ID.
 
+## 2. Authentication Rules
 
-## 🏆 Coach-Specific Rules
+2.1 Login
 
-- 💰 A coach must define a monthly subscription price.
-- 💳 A coach must have an active Stripe subscription to provide services.
-- 👨‍💻 Admin Privileges
+A user can log in using email + password.
 
+Authentication is performed using JWT (access + refresh tokens).
 
-## 👨🏽‍💻 Admin Privileges
+Access token expires quickly (e.g., 15 minutes).
 
-- ❌ The admin can delete an account.
-- 🚷 The admin can ban an account.
-- 💰 Subscription and Payments
+Refresh token expires later (e.g., 7 days).
 
+2.2 Forgot Password
 
-## 💰 Subscription and Payments
+A user can request a password reset link via email.
 
-- 🏋️‍♂️ An athlete can subscribe to a coach.
-- 💵 Subscription payments for athletes are managed via PayPal.
-- 💲 Subscription payments for coaches are managed via Stripe.
-- ❌ An athlete can cancel their subscription at any time.
-- ⚠️ An athlete loses access to premium features if the subscription is not renewed.
-- 🔄 A coach must maintain an active Stripe subscription to keep their coaching status.
-- 💬 Messaging System
+The link must expire after a short period.
 
+2.3 Account Lockout
 
-## 💬 Messaging System
+After 8 failed login attempts, the account is temporarily locked.
 
-- 🗨️ A coach and an athlete can chat with each other.
-- 🔄 Messages are handled via Stream Chat.
-- ✉️ A user can send text messages.
-- 🗑️ A user can delete their messages.
-- 🚩 A user can report inappropriate messages.
-- ✅ Messages must have a status (e.g., sent, delivered, read).
+Lock duration: configurable (e.g., 15 minutes).
 
+2.4 Multi‑Factor Authentication (optional)
 
+A user can enable 2FA using:
+
+Email code
+
+SMS code
+
+Authenticator app
+
+## 3. User Profile Rules
+
+3.1 Editable Information
+
+A user can update:
+
+First name
+
+Last name
+
+Email
+
+Password
+
+3.2 Account Management
+
+A user can deactivate their account.
+
+A deactivated account can be reactivated within 30 days.
+
+A user may request permanent account deletion.
+
+## 4. Athlete‑Specific Rules
+
+4.1 Required Information
+
+An athlete must provide:
+
+Weight category
+
+Next competition date
+
+4.2 Modifications
+
+An athlete can update weight category.
+
+An athlete can update competition date.
+
+4.3 Subscription Rules
+
+An athlete must have an active PayPal subscription to access premium features.
+
+A subscription can be cancelled at any time.
+
+When the subscription ends or expires:
+
+Premium features are disabled.
+
+The athlete cannot send messages to coaches.
+
+## 5. Coach‑Specific Rules
+
+5.1 Required Information
+
+A coach must define their monthly subscription price.
+
+5.2 Subscription Status
+
+A coach must maintain an active Stripe subscription.
+
+If the coach's Stripe subscription becomes inactive:
+
+The coach loses access to coaching tools.
+
+Athletes cannot subscribe to them.
+
+## 6. Admin Rules
+
+6.1 Account Moderation
+
+The admin can delete any user account.
+
+The admin can ban a user.
+
+6.2 Reporting System
+
+Admin receives reports sent by users.
+
+Admin can take actions such as:
+
+Warning the user
+
+Temporary or permanent ban
+
+## 7. Subscription & Payment Rules
+
+7.1 Athlete Payments (PayPal)
+
+Payments for coaches made by athletes must be processed via PayPal.
+
+Each PayPal subscription must store:
+
+Start date
+
+End date
+
+Status
+
+Price
+
+7.2 Coach Payments (Stripe)
+
+Coaches must pay Stripe to maintain premium coaching status.
+
+The application must store the Stripe subscription ID.
+
+When Stripe notifies via webhook:
+
+Update subscription status in the database.
+
+7.3 Cancellation Rules
+
+Users can cancel subscriptions at any time.
+
+Refunds follow the policy of the payment provider.
+
+## 8. Messaging Rules (Tinode‑Based)
+
+8.1 Access
+
+Only athletes with an active PayPal subscription can chat with their assigned coach.
+
+Only coaches with an active Stripe subscription can respond to athletes.
+
+8.2 Message Sending
+
+Messages are NOT stored in the application database.
+
+All messages are stored and delivered by Tinode.
+
+The application must store only:
+
+Tinode user ID (for each user)
+
+Tinode topic IDs (if needed)
+
+8.3 Operations
+
+Users can:
+
+Send text messages
+
+Delete their own messages
+
+See read receipts
+
+Report inappropriate messages
+
+8.4 Real‑Time Features
+
+Real‑time delivery
+
+Typing indicators
+
+Online/offline status
+
+Read receipts
+
+Message history
+
+All real‑time features are managed by Tinode, not by your backend.
