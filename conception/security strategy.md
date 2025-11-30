@@ -1,247 +1,220 @@
-# **Security Strategy — Messaging Platform with Externalized Chat (Tinode + .NET + SQL Server)**
+# **Security Strategy — Messaging Platform**
 
-This document defines the full security strategy for a messaging platform that uses:
-- **Tinode** (externalized messaging server)
-- **.NET backend API**
-- **SQL Server database**
-- **Mobile/Web clients**
+This document describes the security strategy of the application.
 
-It is written in a formal enterprise style and covers: authentication, authorization, encryption, infrastructure security, monitoring, compliance, and incident response.
-
----
-
-# **1. Identity & Access Management (IAM)**
-
-## **SS-IAM1 — Identity Source of Truth**
-- SQL Server is the **primary identity provider**.
-- Tinode relies on mirrored user identities created/updated by the .NET backend.
-
-## **SS-IAM2 — Authentication Standards**
-All authentication mechanisms must:
-- Use **JWT** or **OAuth2** access tokens.
-- Enforce secure password requirements:
-  - Minimum 10 characters
-  - Mixed character types
-  - No reuse of last 5 passwords
-- Support optional **Two-Factor Authentication (2FA)**.
-
-## **SS-IAM3 — Token Security**
-- Access tokens expire within **60 minutes**.
-- Refresh tokens expire within **14 days**.
-- Tokens must be invalidated upon:
-  - Password reset  
-  - Account deactivation  
-  - Role changes  
-
-## **SS-IAM4 — Session Isolation**
-- Each client device generates a unique session token.
-- Sessions must be revocable individually.
+- Protection of user data  
+- Secure communication  
+- Role management (Admin / Coach / Athlete)  
+- Integration with Tinode (externalized chat)  
+- Authentication & authorization  
+- Compliance (GDPR)  
+- Moderation (report/block)  
 
 ---
 
-# **2. Authorization & Role-Based Access Control (RBAC)**
+# **1. Identity & Access Management**
 
-## **SS-RBAC1 — Role Definition**
-The system recognizes:
-- **User**
+## **1.1. User Identity**
+- SQL Server is the **main identity system**.
+- Each account has a unique ID and a verified email.
+- Passwords are never stored in plain text (secure hash algorithm).
+
+## **1.2. Login & Authentication**
+- The backend uses **JWT tokens** for authentication.
+- Access token = short validity (≈ 15–60 min)  
+- Refresh token = longer validity (≈ 7–30 days)
+- Users can log in from several devices (phone + web).
+
+## **1.3. Role Management**
+The application defines 3 roles:
+
+- **Admin**
 - **Coach**
-- **Administrator**
+- **Athlete**
 
-## **SS-RBAC2 — Access Separation**
-- Administrators cannot access user messages.
-- Coaches cannot access administrative functions.
-- Users can only access their own account and conversations.
+Each role has specific permissions.  
+Permissions are always checked in the backend before executing a request.
 
-## **SS-RBAC3 — Principle of Least Privilege**
-Every API endpoint must enforce:
-- Minimum required role
-- Contextual user ownership checks
-- Protection against ID enumeration
+---
+
+# **2. Authorization Rules**
+
+## **2.1. Least Privilege**
+Every user only accesses the resources they own.  
+Examples:
+- A coach cannot access another coach’s data  
+- An athlete cannot modify someone else’s sessions  
+- An admin cannot read chat messages
+
+## **2.2. Resource Ownership**
+Before accessing a resource, the backend verifies:
+- User identity  
+- Role compatibility  
+- Ownership of the resource (example: athlete accessing their own subscription)
 
 ---
 
 # **3. Secure Communication**
 
-## **SS-COM1 — Transport Layer Security**
-All network communication must use:
-- **HTTPS (TLS 1.2+)**
-- **WSS for WebSockets**  
-Self-signed certificates are forbidden in production.
+## **3.1. HTTPS Everywhere**
+All communication between:
+- Mobile/Web apps ↔ API  
+- API ↔ SQL Server  
+- API ↔ Tinode  
 
-## **SS-COM2 — API Gateway Protection**
-- Rate limiting (e.g., 100 requests/min per IP)
-- IP throttling
-- DDoS protection via reverse proxy (NGINX or Azure FrontDoor)
+Must use **HTTPS / WSS**.
 
-## **SS-COM3 — CORS Policy**
-CORS must only allow:
-- Known origins (mobile apps, official web app)
-- Required HTTP methods
-- Required headers only
+## **3.2. Transport Security**
+- Cookies and tokens are transmitted over secure channels only.
+- No sensitive data in URLs or logs.
 
 ---
 
-# **4. Data Encryption & Privacy Controls**
+# **4. Data Protection & Privacy**
 
-## **SS-ENC1 — At-Rest Encryption**
-- SQL Server uses Transparent Data Encryption (TDE).
-- Sensitive columns (email, tokens) use column-level encryption.
-
-## **SS-ENC2 — In-Transit Encryption**
-- All connections between .NET, SQL Server, and Tinode must be encrypted.
-
-## **SS-ENC3 — End-to-End Encryption (E2EE) for Messages**
-- Tinode manages message-level encryption.
-- The .NET backend must **never** log or store decrypted messages.
-- Message bodies must **never** persist in SQL Server.
-
-## **SS-ENC4 — Personal Data Minimization**
-Only necessary profile data is allowed in the SQL database:
-- No message content  
-- No message metadata  
-- No unnecessary personal identifiers  
-
----
-
-# **5. Server & Infrastructure Security**
-
-## **SS-INF1 — Network Segmentation**
-- SQL Server runs on a **private network**, not exposed publicly.
-- Tinode and the .NET API run behind a reverse proxy.
-- Admin interfaces require VPN or allowlisted IPs.
-
-## **SS-INF2 — Deployment Hardening**
-Each server/container must enforce:
-- Disabled root login
-- SSH key authentication only
-- Automatic security patching
-- Fail2Ban (or equivalent) for brute-force protection
-
-## **SS-INF3 — API Security Policies**
-- Input validation on all API endpoints
-- Strong DTO validation
-- Consistent 400/401/403/404 error handling (no leakage of technical details)
-
----
-
-# **6. Database Security**
-
-## **SS-DB1 — Principle of Minimum Data**
-SQL Server stores:
-- Users
-- Profiles
-- Subscriptions
+## **4.1. SQL Server Data**
+SQL Server stores only:
+- User info  
+- Subscriptions (App and Coaching)  
+- Sessions  
+- Reports & blocks  
 - Audit logs  
-**Not messages or conversations**.
+**Not messages.**
 
-## **SS-DB2 — Preventing Enumeration**
-The database must not leak:
-- Whether an email exists  
-- Whether a username exists  
+Sensitive data (passwords, tokens) is always protected.
 
-All “existence-based” feedback must be generic.
+## **4.2. Tinode Message Management**
+Tinode is responsible for:
+- Message storage  
+- Encryption  
+- Chat topics  
+- Delivery/read receipts  
 
-## **SS-DB3 — Backup Security**
-- Daily encrypted backups
-- Retention for 30 days
-- Backup storage separated from production environment
+**The backend and SQL never store message content.**
 
----
-
-# **7. Tinode Security Rules**
-
-## **SS-TIN1 — Account Mapping**
-Each SQL user must map to:
-- One Tinode account (`TinodeUserId`)
-- Managed by the backend during registration
-
-## **SS-TIN2 — Tinode Authentication**
-- Tinode credentials must be generated server-side.
-- Mobile/web apps authenticate with Tinode using backend-issued session tokens.
-
-## **SS-TIN3 — Topic Access Control**
-Tinode topic permissions must:
-- Prevent unauthorized joining of conversations
-- Restrict topic metadata to participants only
-
-## **SS-TIN4 — Admin Access Restrictions**
-- Tinode admins may access system configuration
-- They must **not access message content**  
-(Encrypted messages are unreadable by admins in any case)
-
----
-
-# **8. Logging, Monitoring & Audit**
-
-## **SS-LOG1 — Audit Log Requirements**
-The backend must log:
-- Logins / failed logins
-- Role changes
-- Password resets
-- Account deactivations
-- Tinode account creation
-
-Audit logs **must not** include:
-- Message bodies
-- Sensitive tokens
-
-## **SS-LOG2 — Centralized Log Management**
-Use:
-- ELK (Elastic, Logstash, Kibana), or
-- Azure Application Insights
-
-## **SS-LOG3 — Real-Time Alerts**
-Critical alerts must trigger notifications:
-- Repeated failed login attempts
-- Tinode connection errors
-- Unauthorized access attempts
-- Database anomalies
-
----
-
-# **9. Compliance & Legal Requirements**
-
-## **SS-GDPR1 — Data Subject Rights**
+## **4.3. GDPR**
 Users must be able to:
-- Export their personal data
-- Request full deletion
-- Obtain information about data usage
-
-## **SS-GDPR2 — Retention Policy**
-- Profile and account data: retained until user deletion  
-- Message data: fully managed by Tinode  
-- Logs: retained 6–12 months depending on legal needs
+- Export their data  
+- Delete their account (except legal logs)  
+- Request information about how their data is used  
 
 ---
 
-# **10. Incident Response Plan**
+# **5. Session & Token Security**
 
-## **SS-IR1 — Detection**
-Incidents must be detected through:
-- Automated monitoring systems
-- Manual reports
-- Infrastructure alerts
+## **5.1. Session Management**
+Each device has its own session.  
+The system allows:
+- Manual logout  
+- Revocation of a session  
+- Automatic expiration
 
-## **SS-IR2 — Severity Levels**
-Incidents classified into:
-1. **Critical** (data breach, mass outage)
-2. **High** (role escalation, blocked authentication)
-3. **Medium** (API errors, limited feature failures)
-4. **Low** (minor bugs, network instability)
+## **5.2. Refresh Token Protection**
+A refresh token is:
+- Unique  
+- Stored securely  
+- Invalidated when a session is closed  
 
-## **SS-IR3 — Response Actions**
-For critical incidents:
-- Isolate affected systems
-- Revoke compromised tokens
-- Reset credentials
-- Notify impacted users
+---
 
-## **SS-IR4 — Post-Incident Review**
-Every major incident must include:
-- Timeline of events
-- Root cause analysis
-- Security patch or corrective action
-- Update of relevant policies
+# **6. Moderation & Abuse Prevention**
+
+## **6.1. Blocking System**
+When A blocks B:
+- Messages from B are no longer delivered by Tinode  
+- Conversation topics are muted  
+- Blocking information is stored in SQL  
+
+## **6.2. User Reports**
+Each report contains:
+- Reporter ID  
+- Reported ID  
+- Reason  
+- Status (pending, reviewed, action taken)
+
+Admins can:
+- Suspend users  
+- Deactivate accounts  
+- Review report history
+
+---
+
+# **7. Billing & Subscription Security**
+
+## **7.1. Application Subscription**
+Users must have an active app subscription (Stripe) to:
+- Use the platform  
+- Access messaging  
+- Access coach features  
+
+## **7.2. Coaching Subscription**
+Athletes subscribe monthly to their coach.  
+If payment fails:
+- Coaching link becomes inactive  
+- Messages and features are temporarily blocked
+
+## **7.3. Stripe Integration**
+The backend receives webhook events for:
+- Payment success  
+- Payment failure  
+- Subscription renewal  
+
+Only Stripe IDs (not card data) are stored.
+
+---
+
+# **8. Logging & Monitoring**
+
+## **8.1. Audit Logs**
+The system logs:
+- Login attempts  
+- Account creation  
+- Role changes  
+- Suspensions  
+- Tinode account creation  
+
+Logs do **not** contain:
+- Passwords  
+- Tokens  
+- Message content  
+
+## **8.2. Error Monitoring**
+The backend records:
+- API errors  
+- Tinode connection failures  
+- Unexpected exceptions  
+
+These logs help with debugging and incident response.
+
+---
+
+# **9. Backup & Recovery**
+
+## **9.1. SQL Backups**
+- Daily database backups  
+- Secure storage  
+- Retention: ~30 days  
+
+## **9.2. Tinode Backup**
+- Tinode handles its own message storage  
+- Database snapshot every 24h
+
+## **9.3. Recovery Procedure**
+In case of incident:
+- Restore latest SQL backup  
+- Recreate Tinode users & sync metadata  
+- Restart API services  
+
+---
+
+# **10. Incident Response (Simplified)**
+
+1. Detect issue (logs, alerts, user reports)  
+2. Identify severity (low/medium/high)  
+3. Contain the issue (disable accounts, revoke tokens)  
+4. Fix the cause (patch, config update)  
+5. Document what happened  
+6. Inform users if necessary  
 
 ---
 
