@@ -1,18 +1,18 @@
-# Data Dictionary
+# Data Dictionary — Updated SQL Server Schema
 
 This document describes all SQL Server tables in your final validated model.
 It covers:
 
-- Table description
-- Field definitions
-- Data types
-- Constraints
-- Business rules
-- Links to Tinode (external)
+* Table description
+* Field definitions
+* Data types
+* Constraints
+* Business rules
+* Links to Tinode (external)
 
 ---
 
-# 1. **Table: User\_**
+# 1. **Table: User_**
 
 Stores the main identity of every account (coach or athlete).
 
@@ -28,8 +28,8 @@ Stores the main identity of every account (coach or athlete).
 
 **Business Rules**
 
-- Every user must have an active or inactive app subscription row.
-- Exactly one user type extension (coach or athlete) exists.
+* Every user must have an active or inactive app subscription row.
+* Exactly one user type extension (coach or athlete) exists.
 
 ---
 
@@ -46,8 +46,8 @@ Holds specific data for athlete accounts.
 
 **Business Rules**
 
-- Athlete must correspond to exactly one User\_.
-- Cannot exist without a linked User\_.
+* Athlete must correspond to exactly one User_.
+* Cannot exist without a linked User_.
 
 ---
 
@@ -68,8 +68,8 @@ Coach-specific data.
 
 **Business Rules**
 
-- Only 1 coach record per user.
-- Cannot exist without a linked User\_.
+* Only 1 coach record per user.
+* Cannot exist without a linked User_.
 
 ---
 
@@ -119,8 +119,8 @@ Represents the relationship between a coach and an athlete.
 
 **Business Rules**
 
-- An athlete can link to only one coach at a time.
-- A coach can manage multiple athletes.
+* An athlete can link to only one coach at a time.
+* A coach can manage multiple athletes.
 
 ---
 
@@ -139,8 +139,8 @@ Represents user-to-user blocking actions.
 
 **Business Rules**
 
-- A user may block multiple users.
-- Duplicate block entries may be prevented by the backend.
+* A user may block multiple users.
+* Duplicate block entries may be prevented by the backend.
 
 ---
 
@@ -159,8 +159,8 @@ Handles moderation reports.
 
 **Business Rules**
 
-- A user may report many users.
-- Moderators update report status.
+* A user may report many users.
+* Moderators update report status.
 
 ---
 
